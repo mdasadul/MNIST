@@ -1,11 +1,12 @@
 from __future__ import print_function
 import os
 import tensorflow as tf
-
-
 dir = os.path.dirname(os.path.realpath(__file__))
 
 from tensorflow.contrib import rnn
+
+
+output_names=["output_layer/add"]
 
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
@@ -18,7 +19,7 @@ handle 28 sequences of 28 steps for every sample.
 '''
 # Training Parameters
 learning_rate = 0.001
-training_steps = 1000
+training_steps = 10000
 batch_size = 128
 display_step = 200
 
@@ -29,7 +30,7 @@ num_hidden = 128 # hidden layer num of features
 num_classes = 10 # MNIST total classes (0-9 digits)
 output_layer = ['output_layer/add']
 # tf Graph input
-X = tf.placeholder("float", [None, timesteps, num_input])
+X = tf.placeholder("float", [None, timesteps, num_input],name="Input_X")
 Y = tf.placeholder("float", [None, num_classes])
 
 # Define weights
@@ -37,28 +38,29 @@ weights = {
     'out': tf.Variable(tf.random_normal([num_hidden, num_classes]))
 }
 biases = {
-    'out': tf.Variable(tf.random_normal([num_classes]))}
+    'out': tf.Variable(tf.random_normal([num_classes]))
+}
+class Model(object):
+    def __init__(self,x, weights, biases ):
 
-def RNN(x, weights, biases):
+        # Prepare data shape to match `rnn` function requirements
+        # Current data input shape: (batch_size, timesteps, n_input)
+        # Required shape: 'timesteps' tensors list of shape (batch_size, n_input)
 
-    # Prepare data shape to match `rnn` function requirements
-    # Current data input shape: (batch_size, timesteps, n_input)
-    # Required shape: 'timesteps' tensors list of shape (batch_size, n_input)
+        x = tf.unstack(x, timesteps, 1)
 
-    x = tf.unstack(x, timesteps, 1)
+        # Define a lstm cell with tensorflow
+        lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
 
-    # Define a lstm cell with tensorflow
-    lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
+        # Get lstm cell output
+        outputs, _ = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
 
-    # Get lstm cell output
-    outputs, sttes = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+        # Linear activation, using rnn inner loop last output
+        with tf.name_scope('output_layer'):
+            logit = tf.add(tf.matmul(outputs[-1], weights['out']) , biases['out'],name ='add')
+        #return logit
 
-    # Linear activation, using rnn inner loop last output
-    with tf.name_scope('output_layer'):
-        logit = tf.add(tf.matmul(outputs[-1], weights['out']) , biases['out'],name ='add')
-    return logit
-
-logits = RNN(X, weights, biases)
+logits = Model(X, weights, biases)
 prediction = tf.nn.softmax(logits,name='y_')
 
 # Define loss and optimizer
@@ -73,9 +75,10 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 # Initialize the variables (i.e. assign their default value)
 init = tf.global_variables_initializer()
-
-
-saver = tf.train.Saver()
+output_tensor = tf.get_default_graph().get_tensor_by_name("output_layer/add:0")
+input_tensor = tf.get_default_graph().get_tensor_by_name("Input_X:0")
+#print([tensor.name for tensor in tf.get_default_graph().as_graph_def().node])
+saver = tf.train.Saver() 
 # =]tart training
 with tf.Session() as sess:
 
@@ -97,7 +100,8 @@ with tf.Session() as sess:
                   "{:.3f}".format(acc))
     for op in tf.get_default_graph().get_operations():
         if output_layer[0] in op.name:
-                print(op.name)
+            print(op.name)
+    
     print("Optimization Finished!")
     saver.save(sess,dir+'/tmp/model.ckpt')
     # Calculate accuracy for 128 mnist test images
@@ -106,16 +110,16 @@ with tf.Session() as sess:
     test_label = mnist.test.labels[:test_len]
     print("Testing prediction:", \
         sess.run(prediction, feed_dict={X: test_data}))
-
+    
     print("Testing Accuracy:", \
         sess.run(accuracy, feed_dict={X: test_data, Y: test_label}))
     graphdef = tf.get_default_graph().as_graph_def()
     # save the model
-    export_path =  './savedmodel'
+    export_path =  '/tmp/savedmodel'
     builder = tf.saved_model.builder.SavedModelBuilder(export_path)
 
-    tensor_info_x = tf.saved_model.utils.build_tensor_info(X)
-    tensor_info_y = tf.saved_model.utils.build_tensor_info(prediction)
+    tensor_info_x = tf.saved_model.utils.build_tensor_info(input_tensor)
+    tensor_info_y = tf.saved_model.utils.build_tensor_info(output_tensor)
 
     prediction_signature = (
          tf.saved_model.signature_def_utils.build_signature_def(
@@ -132,4 +136,3 @@ with tf.Session() as sess:
       )
     builder.save()
 
-     
