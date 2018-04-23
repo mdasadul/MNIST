@@ -1,12 +1,11 @@
 from __future__ import print_function
 import os
 import tensorflow as tf
+
+
 dir = os.path.dirname(os.path.realpath(__file__))
 
 from tensorflow.contrib import rnn
-
-
-output_names=["output_layer/add"]
 
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
@@ -19,9 +18,9 @@ handle 28 sequences of 28 steps for every sample.
 '''
 # Training Parameters
 learning_rate = 0.001
-training_steps = 10000
+training_steps = 5000
 batch_size = 128
-display_step = 200
+display_step = 1000
 
 # Network Parameters
 num_input = 28 # MNIST data input (img shape: 28*28)
@@ -38,30 +37,29 @@ weights = {
     'out': tf.Variable(tf.random_normal([num_hidden, num_classes]))
 }
 biases = {
-    'out': tf.Variable(tf.random_normal([num_classes]))
-}
-class Model(object):
-    def __init__(self,x, weights, biases ):
+    'out': tf.Variable(tf.random_normal([num_classes]))}
 
-        # Prepare data shape to match `rnn` function requirements
-        # Current data input shape: (batch_size, timesteps, n_input)
-        # Required shape: 'timesteps' tensors list of shape (batch_size, n_input)
+def RNN(x, weights, biases):
 
-        x = tf.unstack(x, timesteps, 1)
+    # Prepare data shape to match `rnn` function requirements
+    # Current data input shape: (batch_size, timesteps, n_input)
+    # Required shape: 'timesteps' tensors list of shape (batch_size, n_input)
 
-        # Define a lstm cell with tensorflow
-        lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
+    x = tf.unstack(x, timesteps, 1)
 
-        # Get lstm cell output
-        outputs, _ = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+    # Define a lstm cell with tensorflow
+    lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
 
-        # Linear activation, using rnn inner loop last output
-        with tf.name_scope('output_layer'):
-            logit = tf.add(tf.matmul(outputs[-1], weights['out']) , biases['out'],name ='add')
-        #return logit
+    # Get lstm cell output
+    outputs, _ = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
 
-logits = Model(X, weights, biases)
-prediction = tf.nn.softmax(logits,name='y_')
+    # Linear activation, using rnn inner loop last output
+    with tf.name_scope('output_layer'):
+        logit = tf.add(tf.matmul(outputs[-1], weights['out']) , biases['out'],name ='add')
+    return logit
+
+logits = RNN(X, weights, biases)
+prediction = tf.nn.softmax(logits,name='prediction')
 
 # Define loss and optimizer
 loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
@@ -75,10 +73,10 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 # Initialize the variables (i.e. assign their default value)
 init = tf.global_variables_initializer()
+
 output_tensor = tf.get_default_graph().get_tensor_by_name("output_layer/add:0")
 input_tensor = tf.get_default_graph().get_tensor_by_name("Input_X:0")
-#print([tensor.name for tensor in tf.get_default_graph().as_graph_def().node])
-saver = tf.train.Saver() 
+saver = tf.train.Saver()
 # =]tart training
 with tf.Session() as sess:
 
@@ -100,8 +98,7 @@ with tf.Session() as sess:
                   "{:.3f}".format(acc))
     for op in tf.get_default_graph().get_operations():
         if output_layer[0] in op.name:
-            print(op.name)
-    
+                print(op.name)
     print("Optimization Finished!")
     saver.save(sess,dir+'/tmp/model.ckpt')
     # Calculate accuracy for 128 mnist test images
@@ -110,12 +107,12 @@ with tf.Session() as sess:
     test_label = mnist.test.labels[:test_len]
     print("Testing prediction:", \
         sess.run(prediction, feed_dict={X: test_data}))
-    
+
     print("Testing Accuracy:", \
         sess.run(accuracy, feed_dict={X: test_data, Y: test_label}))
     graphdef = tf.get_default_graph().as_graph_def()
     # save the model
-    export_path =  '/tmp/savedmodel'
+    export_path =  './savedmodel'
     builder = tf.saved_model.builder.SavedModelBuilder(export_path)
 
     tensor_info_x = tf.saved_model.utils.build_tensor_info(input_tensor)
@@ -136,3 +133,4 @@ with tf.Session() as sess:
       )
     builder.save()
 
+     
