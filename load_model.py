@@ -34,12 +34,8 @@ for i in range(num_tests):
     batch_y = mnist.test.labels[i]
 
     logits = sess.run([y], feed_dict={x: batch_x})
-    prediction  = softmax(logits)#tf.exp(logits) / tf.reduce_sum(tf.exp(logits), -1)
-
-    # print(batch_y)
-    # print(np.argmax(batch_y))
-    # print(np.argmax(prediction))
+    prediction  = softmax(logits)
     correct_pred = sess.run(tf.equal(np.argmax(prediction), np.argmax(batch_y)))
     if correct_pred:
         accuracy +=1
-print("Accuracy= %f"%(accuracy*1.0/num_tests))
+print("Accuracy= %0.2f"%((accuracy*1.0/num_tests)*100))

@@ -4,7 +4,7 @@ import tensorflow as tf
 
 
 dir = os.path.dirname(os.path.realpath(__file__))
-
+import shutil
 from tensorflow.contrib import rnn
 
 # Import MNIST data
@@ -18,7 +18,7 @@ handle 28 sequences of 28 steps for every sample.
 '''
 # Training Parameters
 learning_rate = 0.001
-training_steps = 5000
+training_steps = 10000
 batch_size = 128
 display_step = 1000
 
@@ -112,7 +112,9 @@ with tf.Session() as sess:
         sess.run(accuracy, feed_dict={X: test_data, Y: test_label}))
     graphdef = tf.get_default_graph().as_graph_def()
     # save the model
+    
     export_path =  './savedmodel'
+    shutil.rmtree(export_path)
     builder = tf.saved_model.builder.SavedModelBuilder(export_path)
 
     tensor_info_x = tf.saved_model.utils.build_tensor_info(input_tensor)
