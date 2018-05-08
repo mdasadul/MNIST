@@ -6,6 +6,8 @@ import tensorflow as tf
 dir = os.path.dirname(os.path.realpath(__file__))
 import shutil
 from tensorflow.contrib import rnn
+tf.app.flags.DEFINE_integer('model_version', 2, 'version number of the model.')
+FLAGS = tf.app.flags.FLAGS
 
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
@@ -113,8 +115,15 @@ with tf.Session() as sess:
     graphdef = tf.get_default_graph().as_graph_def()
     # save the model
     
-    export_path =  './savedmodel'
-    shutil.rmtree(export_path)
+    export_base_path =  './savedmodel'
+    # if (os.path.isdir(export_base_path)):
+    #     shutil.rmtree(export_base_path)
+    # else:
+    #     os.makedirs
+
+    export_path = os.path.join(
+      tf.compat.as_bytes(export_base_path),
+      tf.compat.as_bytes(str(FLAGS.model_version)))
     builder = tf.saved_model.builder.SavedModelBuilder(export_path)
 
     tensor_info_x = tf.saved_model.utils.build_tensor_info(input_tensor)
