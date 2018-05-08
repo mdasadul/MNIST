@@ -8,7 +8,7 @@ import argparse
 def main(args):  
     mnist = input_data.read_data_sets(args.data_dir, one_hot=True)
     counter = 0
-    num_tests = 100
+    num_tests = args.num_tests
     for i in range(num_tests):
         image = mnist.test.images[i]
         data = {'data':image.tolist()}
@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', default='/tmp/data')
     parser.add_argument('--host',default='http://127.0.0.1')
     parser.add_argument('--port',default=5000)
+    parser.add_argument('--num_tests',default=100)
     args = parser.parse_args()
 
     main(args)
