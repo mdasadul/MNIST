@@ -3,7 +3,7 @@ import requests
 import json
 from tensorflow.examples.tutorials.mnist import input_data
 import argparse
-from gprc.beta import implementations
+from grpc.beta import implementations
 import tensorflow as tf
 
 from tensorflow_serving.apis import predict_pb2, prediction_service_pb2
