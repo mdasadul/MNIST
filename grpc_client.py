@@ -17,7 +17,7 @@ def main(args):
     mnist = input_data.read_data_sets(args.data_dir, one_hot=True)
 
     channel = implementations.insecure_channel(host, int(port))
-    stub = prediction_service_pb2.beta_create_PredictionService_server(channel)
+    stub = prediction_service_pb2.beta_create_PredictionService_stub(channel)
 
     counter = 0
     num_tests = args.num_tests
@@ -28,10 +28,10 @@ def main(args):
         request.model_spec.name = 'mnist'
         request.model_spec.signature_name = tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY
         request.inputs['x_input'].CopyFrom(
-            make_tensor_proto(image[0],image[0].size)
+            make_tensor_proto(image[0],shape=[1,28,28])
         )
-        result_future = stub.Predict.future(request,10.0)
-        response = result_future.result().outputs['y_output']
+        result_future = stub.Predict(request,10.0)
+        response = np.array(result_future.outputs['y_output'].float_val)
 
         if np.argmax(response) ==np.argmax(label):
             counter +=1
@@ -42,8 +42,8 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', default='/tmp/data')
-    parser.add_argument('--host',default='http://127.0.0.1')
-    parser.add_argument('--port',default=5000)
+    parser.add_argument('--host',default='127.0.0.1')
+    parser.add_argument('--port',default=9000)
     parser.add_argument('--num_tests',default=100)
     args = parser.parse_args()
 
