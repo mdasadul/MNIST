@@ -3,13 +3,12 @@ import numpy as np
 from flask import Flask, request
 import json
 
-# Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
 
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x)
-    return e_x / e_x.sum(axis=-1) # only difference
+    return e_x / e_x.sum(axis=-1)
 
 
 app =Flask(__name__)
@@ -28,6 +27,8 @@ def predict():
 
 if __name__ == '__main__':
     tf.app.flags.DEFINE_string('model_path','./savedmodel/2/',help='model Path')
+    tf.app.flags.DEFINE_string('host','0.0.0.0',help='server ip address')
+    tf.app.flags.DEFINE_integer('port',5000,help='server port')
     FLAGS = tf.app.flags.FLAGS
     sess=tf.Session()
 
@@ -47,5 +48,5 @@ if __name__ == '__main__':
 
     x = sess.graph.get_tensor_by_name(x_tensor_name)
     y = sess.graph.get_tensor_by_name(y_tensor_name)
-
-    app.run()
+    
+    app.run(host=FLAGS.host,port=FLAGS.port)
