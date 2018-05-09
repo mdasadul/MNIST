@@ -3,11 +3,12 @@ import requests
 import json
 from tensorflow.examples.tutorials.mnist import input_data
 import argparse
-
+import time
 
 def main(args):  
     mnist = input_data.read_data_sets(args.data_dir, one_hot=True)
     counter = 0
+    start_time = time.time()
     num_tests = args.num_tests
     for i in range(num_tests):
         image = mnist.test.images[i]
@@ -24,7 +25,7 @@ def main(args):
         else:
             pass
     print("Accuracy= %0.2f"%((counter*1.0/num_tests)*100))
-
+    print("Time takes to run the test %0.2f"%(time.time()-start_time))
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', default='/tmp/data')

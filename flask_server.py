@@ -3,8 +3,6 @@ import numpy as np
 from flask import Flask, request
 import json
 
-from tensorflow.examples.tutorials.mnist import input_data
-
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x)
