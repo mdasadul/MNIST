@@ -12,7 +12,6 @@ FLAGS = tf.app.flags.FLAGS
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
-
 '''
 To classify images using a recurrent neural network, we consider every image
 row as a sequence of pixels. Because MNIST image shape is 28*28px, we will then
@@ -40,6 +39,14 @@ weights = {
 }
 biases = {
     'out': tf.Variable(tf.random_normal([num_classes]))}
+
+(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
+dataset = tf.data.Dataset.from_tensor_slices((X,Y))
+dataset = dataset.map()
+ dataset.map(
+    lambda src,tgt:(src,mak),
+    num_parallel_calls = num_parallel_calls).prefetch(output_buffer_size)
+
 
 def RNN(x, weights, biases):
 
@@ -79,18 +86,21 @@ init = tf.global_variables_initializer()
 output_tensor = tf.get_default_graph().get_tensor_by_name("output_layer/add:0")
 input_tensor = tf.get_default_graph().get_tensor_by_name("Input_X:0")
 saver = tf.train.Saver()
+iterator = dataset.make_initializable_iterator()
+batch_x, batch_y =iterator.get_next()
 # =]tart training
 with tf.Session() as sess:
-
+    
     # Run the initializer
     sess.run(init)
+    sess.run(iterator.initializer,feed_dict={X: train_images, Y: train_labels})
 
     for step in range(1, training_steps+1):
-        batch_x, batch_y = mnist.train.next_batch(batch_size)
+        
         # Reshape data to get 28 seq of 28 elements
         batch_x = batch_x.reshape((batch_size, timesteps, num_input))
         # Run optimization op (backprop)
-        sess.run(train_op, feed_dict={X: batch_x, Y: batch_y})
+        sess.run(train_op, f)
         if step % display_step == 0 or step == 1:
             # Calculate batch loss and accuracy
             loss, acc = sess.run([loss_op, accuracy], feed_dict={X: batch_x,
