@@ -16,14 +16,17 @@ def main(args):
         headers = {'content-type': 'application/json'} 
         url = args.host+':'+str(args.port)
 
-        response = requests.post(url,json.dumps(data),headers = headers)
-        response.encoding = 'utf-8'
-        response = json.loads(response.text)
-        response = response['y']
-        if np.argmax(response) ==np.argmax(mnist.test.labels[i]):
-            counter +=1
+        response = requests.post(url,json.dumps(data),headers = headers,timeout=10)
+        if response.status_code == 200:
+            response.encoding = 'utf-8'
+            response = json.loads(response.text)
+            response = response['y']
+            if np.argmax(response) ==np.argmax(mnist.test.labels[i]):
+                counter +=1
+            else:
+                pass
         else:
-            pass
+            print(response)
     print("Accuracy= %0.2f"%((counter*1.0/num_tests)*100))
     print("Time takes to run the test %0.2f"%(time.time()-start_time))
 if __name__ == '__main__':

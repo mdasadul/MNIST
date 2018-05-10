@@ -24,7 +24,7 @@ def predict():
     return json_data
 
 if __name__ == '__main__':
-    tf.app.flags.DEFINE_string('model_path','./savedmodel/2/',help='model Path')
+    tf.app.flags.DEFINE_string('model_path','./savedmodel/1/',help='model Path')
     tf.app.flags.DEFINE_string('host','0.0.0.0',help='server ip address')
     tf.app.flags.DEFINE_integer('port',5000,help='server port')
     FLAGS = tf.app.flags.FLAGS
