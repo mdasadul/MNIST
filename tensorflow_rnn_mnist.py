@@ -42,12 +42,13 @@ biases = {
 
 (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
 dataset = tf.data.Dataset.from_tensor_slices((X,Y))
-dataset = dataset.map()
- dataset.map(
-    lambda src,tgt:(src,mak),
-    num_parallel_calls = num_parallel_calls).prefetch(output_buffer_size)
 
+train_labels = tf.keras.utils.to_categorical(train_labels)
+test_labels = tf.keras.utils.to_categorical(test_labels)
 
+iterator = dataset.make_initializable_iterator()
+batch_x, batch_y =iterator.get_next()
+print(batch_x.shape)
 def RNN(x, weights, biases):
 
     # Prepare data shape to match `rnn` function requirements
@@ -55,7 +56,7 @@ def RNN(x, weights, biases):
     # Required shape: 'timesteps' tensors list of shape (batch_size, n_input)
 
     x = tf.unstack(x, timesteps, 1)
-
+    print(len(x))
     # Define a lstm cell with tensorflow
     lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
 
@@ -67,17 +68,17 @@ def RNN(x, weights, biases):
         logit = tf.add(tf.matmul(outputs[-1], weights['out']) , biases['out'],name ='add')
     return logit
 
-logits = RNN(X, weights, biases)
+logits = RNN(batch_x, weights, biases)
 prediction = tf.nn.softmax(logits,name='prediction')
 
 # Define loss and optimizer
 loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
-    logits=logits, labels=Y))
+    logits=logits, labels=batch_y))
 optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
 train_op = optimizer.minimize(loss_op)
 
 # Evaluate model (with test logits, for dropout to be disabled)
-correct_pred = tf.equal(tf.argmax(prediction, 1), tf.argmax(Y, 1))
+correct_pred = tf.equal(tf.argmax(prediction, 1), tf.argmax(batch_y, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 # Initialize the variables (i.e. assign their default value)
@@ -86,8 +87,7 @@ init = tf.global_variables_initializer()
 output_tensor = tf.get_default_graph().get_tensor_by_name("output_layer/add:0")
 input_tensor = tf.get_default_graph().get_tensor_by_name("Input_X:0")
 saver = tf.train.Saver()
-iterator = dataset.make_initializable_iterator()
-batch_x, batch_y =iterator.get_next()
+
 # =]tart training
 with tf.Session() as sess:
     
@@ -98,13 +98,12 @@ with tf.Session() as sess:
     for step in range(1, training_steps+1):
         
         # Reshape data to get 28 seq of 28 elements
-        batch_x = batch_x.reshape((batch_size, timesteps, num_input))
+        # batch_x = batch_x.reshape((batch_size, timesteps, num_input))
         # Run optimization op (backprop)
-        sess.run(train_op, f)
+        sess.run(train_op)
         if step % display_step == 0 or step == 1:
             # Calculate batch loss and accuracy
-            loss, acc = sess.run([loss_op, accuracy], feed_dict={X: batch_x,
-                                                                 Y: batch_y})
+            loss, acc = sess.run([loss_op, accuracy])
             print("Step " + str(step) + ", Minibatch Loss= " + \
                   "{:.4f}".format(loss) + ", Training Accuracy= " + \
                   "{:.3f}".format(acc))
