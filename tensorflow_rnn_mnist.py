@@ -4,14 +4,10 @@ import tensorflow as tf
 
 
 dir = os.path.dirname(os.path.realpath(__file__))
-import shutil
 from tensorflow.contrib import rnn
-tf.app.flags.DEFINE_integer('model_version', 2, 'version number of the model.')
+tf.app.flags.DEFINE_integer('model_version', 3, 'version number of the model.')
 FLAGS = tf.app.flags.FLAGS
 
-# Import MNIST data
-from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
 '''
 To classify images using a recurrent neural network, we consider every image
 row as a sequence of pixels. Because MNIST image shape is 28*28px, we will then
@@ -19,19 +15,19 @@ handle 28 sequences of 28 steps for every sample.
 '''
 # Training Parameters
 learning_rate = 0.001
-training_steps = 10000
-batch_size = 128
-display_step = 1000
+BATCH_SIZE = 128
+EPOCHS = 5
 
 # Network Parameters
 num_input = 28 # MNIST data input (img shape: 28*28)
 timesteps = 28 # timesteps
-num_hidden = 128 # hidden layer num of features
+num_hidden = 256 # hidden layer num of features
 num_classes = 10 # MNIST total classes (0-9 digits)
 output_layer = ['output_layer/add']
 # tf Graph input
 X = tf.placeholder("float", [None, timesteps, num_input],name="Input_X")
 Y = tf.placeholder("float", [None, num_classes])
+batch_size = tf.placeholder(tf.int64)
 
 # Define weights
 weights = {
@@ -41,14 +37,16 @@ biases = {
     'out': tf.Variable(tf.random_normal([num_classes]))}
 
 (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
-dataset = tf.data.Dataset.from_tensor_slices((X,Y))
+n_batches = len(train_images) // BATCH_SIZE
+
+dataset = tf.data.Dataset.from_tensor_slices((X,Y)).batch(BATCH_SIZE).repeat().prefetch(10000)
 
 train_labels = tf.keras.utils.to_categorical(train_labels)
 test_labels = tf.keras.utils.to_categorical(test_labels)
 
 iterator = dataset.make_initializable_iterator()
 batch_x, batch_y =iterator.get_next()
-print(batch_x.shape)
+
 def RNN(x, weights, biases):
 
     # Prepare data shape to match `rnn` function requirements
@@ -56,7 +54,7 @@ def RNN(x, weights, biases):
     # Required shape: 'timesteps' tensors list of shape (batch_size, n_input)
 
     x = tf.unstack(x, timesteps, 1)
-    print(len(x))
+    
     # Define a lstm cell with tensorflow
     lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
 
@@ -74,7 +72,7 @@ prediction = tf.nn.softmax(logits,name='prediction')
 # Define loss and optimizer
 loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
     logits=logits, labels=batch_y))
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 train_op = optimizer.minimize(loss_op)
 
 # Evaluate model (with test logits, for dropout to be disabled)
@@ -93,43 +91,32 @@ with tf.Session() as sess:
     
     # Run the initializer
     sess.run(init)
-    sess.run(iterator.initializer,feed_dict={X: train_images, Y: train_labels})
+    sess.run(iterator.initializer,feed_dict={X: train_images, Y: train_labels, batch_size:BATCH_SIZE})
 
-    for step in range(1, training_steps+1):
+    for i in range(EPOCHS):
+        total_loss = 0.0
+        for step in range(n_batches):
+            
+            _,loss = sess.run([train_op,loss_op])
+            total_loss +=loss
         
-        # Reshape data to get 28 seq of 28 elements
-        # batch_x = batch_x.reshape((batch_size, timesteps, num_input))
-        # Run optimization op (backprop)
-        sess.run(train_op)
-        if step % display_step == 0 or step == 1:
-            # Calculate batch loss and accuracy
-            loss, acc = sess.run([loss_op, accuracy])
-            print("Step " + str(step) + ", Minibatch Loss= " + \
-                  "{:.4f}".format(loss) + ", Training Accuracy= " + \
-                  "{:.3f}".format(acc))
-    for op in tf.get_default_graph().get_operations():
-        if output_layer[0] in op.name:
-                print(op.name)
+        acc = sess.run(accuracy)
+        print("Epoch " + str(i) + ", Minibatch Loss= " + \
+                    "{:.4f}".format(total_loss/n_batches) + ", Training Accuracy= " + \
+                    "{:.3f}".format(acc))
     print("Optimization Finished!")
     saver.save(sess,dir+'/tmp/model.ckpt')
     # Calculate accuracy for 128 mnist test images
-    test_len = 128
-    test_data = mnist.test.images[:test_len].reshape((-1, timesteps, num_input))
-    test_label = mnist.test.labels[:test_len]
-    print("Testing prediction:", \
-        sess.run(prediction, feed_dict={X: test_data}))
+    sess.run(iterator.initializer,feed_dict={X: test_images,Y:test_labels, batch_size: test_images.shape[0]})
+    print("Testing loss:", \
+        sess.run(loss_op))
 
     print("Testing Accuracy:", \
-        sess.run(accuracy, feed_dict={X: test_data, Y: test_label}))
+        sess.run(accuracy))
     graphdef = tf.get_default_graph().as_graph_def()
     # save the model
     
     export_base_path =  './savedmodel'
-    # if (os.path.isdir(export_base_path)):
-    #     shutil.rmtree(export_base_path)
-    # else:
-    #     os.makedirs
-
     export_path = os.path.join(
       tf.compat.as_bytes(export_base_path),
       tf.compat.as_bytes(str(FLAGS.model_version)))
@@ -152,5 +139,3 @@ with tf.Session() as sess:
        },
       )
     builder.save()
-
-     
