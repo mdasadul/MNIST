@@ -5,7 +5,7 @@ import tensorflow as tf
 
 dir = os.path.dirname(os.path.realpath(__file__))
 from tensorflow.contrib import rnn
-tf.app.flags.DEFINE_integer('model_version', 3, 'version number of the model.')
+tf.app.flags.DEFINE_integer('model_version', 1, 'version number of the model.')
 FLAGS = tf.app.flags.FLAGS
 
 '''
@@ -13,6 +13,7 @@ To classify images using a recurrent neural network, we consider every image
 row as a sequence of pixels. Because MNIST image shape is 28*28px, we will then
 handle 28 sequences of 28 steps for every sample.
 '''
+(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
 # Training Parameters
 learning_rate = 0.001
 BATCH_SIZE = 128
@@ -36,16 +37,17 @@ weights = {
 biases = {
     'out': tf.Variable(tf.random_normal([num_classes]))}
 
-(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
-n_batches = len(train_images) // BATCH_SIZE
 
-dataset = tf.data.Dataset.from_tensor_slices((X,Y)).batch(BATCH_SIZE).repeat().prefetch(10000)
+n_batches = len(train_images) // BATCH_SIZE
+def preprocessing_fn(input_str):
+
+dataset = tf.data.Dataset.from_tensor_slices((X)).prefetch(10000).batch(BATCH_SIZE).repeat().prefetch(10000)
 
 train_labels = tf.keras.utils.to_categorical(train_labels)
 test_labels = tf.keras.utils.to_categorical(test_labels)
-
-iterator = dataset.make_initializable_iterator()
-batch_x, batch_y =iterator.get_next()
+batch_x,batch_y = tf.contrib.data.get_single_element(dataset)
+#iterator = dataset.make_initializable_iterator()
+#batch_x, batch_y =iterator.get_next()
 
 def RNN(x, weights, biases):
 
@@ -91,13 +93,13 @@ with tf.Session() as sess:
     
     # Run the initializer
     sess.run(init)
-    sess.run(iterator.initializer,feed_dict={X: train_images, Y: train_labels, batch_size:BATCH_SIZE})
+    #sess.run(iterator.initializer,feed_dict={X: train_images, Y: train_labels, batch_size:BATCH_SIZE})
 
     for i in range(EPOCHS):
         total_loss = 0.0
         for step in range(n_batches):
             
-            _,loss = sess.run([train_op,loss_op])
+            _,loss = sess.run([train_op,loss_op], feed_dict={X:train_images,Y:train_labels})
             total_loss +=loss
         
         acc = sess.run(accuracy)
@@ -107,12 +109,12 @@ with tf.Session() as sess:
     print("Optimization Finished!")
     saver.save(sess,dir+'/tmp/model.ckpt')
     # Calculate accuracy for 128 mnist test images
-    sess.run(iterator.initializer,feed_dict={X: test_images,Y:test_labels, batch_size: test_images.shape[0]})
+    #sess.run(iterator.initializer,feed_dict={X: test_images,Y:test_labels, batch_size: test_images.shape[0]})
     print("Testing loss:", \
-        sess.run(loss_op))
+        sess.run(loss_op,feed_dict={X:test_images,Y:test_labels}))
 
     print("Testing Accuracy:", \
-        sess.run(accuracy))
+        sess.run(accuracy,feed_dict={X:test_images,Y:test_labels}))
     graphdef = tf.get_default_graph().as_graph_def()
     # save the model
     
@@ -137,5 +139,5 @@ with tf.Session() as sess:
       tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
           prediction_signature
        },
-      )
+      clear_devices=False)
     builder.save()

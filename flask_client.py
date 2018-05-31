@@ -34,7 +34,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', default='/tmp/data')
     parser.add_argument('--host',default='http://127.0.0.1')
     parser.add_argument('--port',default=5000)
-    parser.add_argument('--num_tests',default=100)
+    parser.add_argument('--num_tests',default=1)
     args = parser.parse_args()
 
     main(args)
